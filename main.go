@@ -4,10 +4,12 @@ import (
 	"demo/password/account"
 	"demo/password/files"
 	"fmt"
+	"github.com/fatih/color"
 )
 
 func main() {
 	fmt.Println("Account manager")
+	vault := account.NewVault()
 Menu:
 	for {
 		variant := getMenu()
@@ -16,11 +18,11 @@ Menu:
 		}
 		switch variant {
 		case 1:
-			createAccount()
+			createAccount(vault)
 		case 2:
-			findAccount()
+			findAccount(vault)
 		case 3:
-			deleteAccount()
+			deleteAccount(vault)
 		default:
 			break Menu
 		}
@@ -39,19 +41,15 @@ func getMenu() int {
 
 }
 
-func createAccount() {
-	fmt.Println("Введите логин:")
-	login := promptData()
-	fmt.Println("Введите пароль:")
-	password := promptData()
-	fmt.Println("Введите url:")
-	url := promptData()
+func createAccount(vault *account.Vault) {
+	login := promptData("Введите логин:")
+	password := promptData("Введите пароль:")
+	url := promptData("Введите url:")
 	u, err := account.NewAccount(login, password, url)
 	if err != nil {
 		fmt.Println("Неверные заполненые данные")
 		return
 	}
-	vault := account.NewVault()
 	vault.AddAccount(*u)
 	data, err := vault.ToBytes()
 	if err != nil {
@@ -59,18 +57,29 @@ func createAccount() {
 		return
 	}
 	files.WriteFile(data, "data.json")
-}
-
-func findAccount() (f []byte, err error) {
-	return f, err
-}
-
-func deleteAccount() {
 
 }
 
-func promptData() string {
-	fmt.Print(" ")
+func findAccount(vault *account.Vault) {
+	url := promptData("Введите url для поиска")
+	accounts := vault.FindAccountsByUrl(url)
+	for _, account := range accounts {
+		account.Output()
+	}
+}
+
+func deleteAccount(vault *account.Vault) {
+	url := promptData("Введите url для удаления")
+	if !vault.DeleteAccountsByUrl(url) {
+		color.Green("Аккаунтов с таким url нету")
+	} else {
+		color.Red("Аккаунты с таким url удалены")
+	}
+
+}
+
+func promptData(x string) string {
+	fmt.Println(x + " ")
 	var vvod string
 	fmt.Scanln(&vvod)
 	return vvod
