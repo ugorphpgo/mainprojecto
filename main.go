@@ -59,7 +59,6 @@ func createAccount() {
 		return
 	}
 	files.WriteFile(data, "data.json")
-	files.ReadFile()
 }
 
 func findAccount() (f []byte, err error) {
