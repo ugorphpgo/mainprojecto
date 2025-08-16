@@ -13,34 +13,44 @@ type Vault struct {
 	UpdateAt time.Time `json:"updateAt"`
 }
 
-func NewVault() *Vault {
-	file, err := files.ReadFile("data.json")
-	if err != nil {
-		return &Vault{
-			Accounts: []Account{},
-			UpdateAt: time.Now(),
+// пример внедрения зависимости Jsond.db
+type VaultWithDb struct { //Создаем структуру которая учитывает файл в котором будет сохраняться vault
+	Vault
+	db files.Jsondb //Внедренная зависимость от jsonDb
+}
+
+func NewVault(db *files.Jsondb) *VaultWithDb { //Внедрение зависимости files.JsonDb в vault - передаем указатель на бд
+	file, err := db.Read()
+	if err != nil { //действия не удалось прочитать инфу из файла - его нет//
+		return &VaultWithDb{ //возвращаем и vault и его поля и добавляем к этому поле db
+			Vault: Vault{
+				Accounts: []Account{},
+				UpdateAt: time.Now(),
+			},
+			db: *db,
 		}
 	}
-	var vault Vault
+	var vault VaultWithDb
 	err = json.Unmarshal(file, &vault)
 	if err != nil {
 		color.Red(err.Error())
 	}
-	return &vault
-
-}
-
-func (vault *Vault) AddAccount(acc Account) {
-	vault.Accounts = append(vault.Accounts, acc)
-	vault.UpdateAt = time.Now()
-	data, err := vault.ToBytes()
-	if err != nil {
-		color.Red("Не удалось преобразовать данные  в json")
+	return &VaultWithDb{
+		Vault: Vault{
+			Accounts: []Account{},
+			UpdateAt: time.Now(),
+		},
+		db: *db,
 	}
-	files.WriteFile(data, "data.json")
+
 }
 
-func (vault *Vault) FindAccountsByUrl(url string) []Account {
+func (vault *VaultWithDb) AddAccount(acc Account) {
+	vault.Accounts = append(vault.Accounts, acc)
+	vault.save()
+}
+
+func (vault *VaultWithDb) FindAccountsByUrl(url string) []Account {
 	var accounts []Account
 	for _, account := range vault.Accounts {
 		isMatched := strings.Contains(account.Url, url)
@@ -52,7 +62,7 @@ func (vault *Vault) FindAccountsByUrl(url string) []Account {
 	return accounts
 }
 
-func (vault *Vault) DeleteAccountsByUrl(url string) bool {
+func (vault *VaultWithDb) DeleteAccountsByUrl(url string) bool {
 	var accounts []Account
 	isDeleted := false
 	for _, account := range vault.Accounts {
@@ -64,19 +74,24 @@ func (vault *Vault) DeleteAccountsByUrl(url string) bool {
 
 	}
 	vault.Accounts = accounts
-	vault.UpdateAt = time.Now()
-	data, err := vault.ToBytes()
-	if err != nil {
-		color.Red("Не удалось преобразовать данные  в json")
-	}
-	files.WriteFile(data, "data.json")
+	vault.save()
 
 	return isDeleted
 }
-func (Vault *Vault) ToBytes() ([]byte, error) {
-	file, err := json.Marshal(Vault)
-	if err != nil {
+func (Vault *Vault) ToBytes() ([]byte, error) { // Запись значение из хранилища vault в json файл
+	file, err := json.Marshal(Vault) //Важно чтобы этот метод работал только с начальным хранилищем Vault
+	if err != nil {                  //без значения jdondb - потому что идёт преобразование только зависимости без самого файла
 		return nil, err
 	}
 	return file, nil
+}
+
+func (vault *VaultWithDb) save() { //сохранение файла
+	vault.UpdateAt = time.Now()
+	data, err := vault.Vault.ToBytes()
+	if err != nil {
+		color.Red("Не удалось преобразовать данные  в json")
+	}
+	vault.db.Write(data)
+
 }
