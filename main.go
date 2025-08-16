@@ -9,7 +9,7 @@ import (
 
 func main() {
 	fmt.Println("Account manager")
-	vault := account.NewVault()
+	vault := account.NewVault(files.NewJsonDb("data.json")) //Создаем хранилище структур c  зависимостью NewJsonDb
 Menu:
 	for {
 		variant := getMenu()
@@ -41,8 +41,8 @@ func getMenu() int {
 
 }
 
-func createAccount(vault *account.Vault) {
-	login := promptData("Введите логин:")
+func createAccount(vault *account.VaultWithDb) { //функция добавления аккаунта,
+	login := promptData("Введите логин:") //образа
 	password := promptData("Введите пароль:")
 	url := promptData("Введите url:")
 	u, err := account.NewAccount(login, password, url)
@@ -51,16 +51,9 @@ func createAccount(vault *account.Vault) {
 		return
 	}
 	vault.AddAccount(*u)
-	data, err := vault.ToBytes()
-	if err != nil {
-		fmt.Println("Не получилось преобразовать в JSON")
-		return
-	}
-	files.WriteFile(data, "data.json")
-
 }
 
-func findAccount(vault *account.Vault) {
+func findAccount(vault *account.VaultWithDb) {
 	url := promptData("Введите url для поиска")
 	accounts := vault.FindAccountsByUrl(url)
 	for _, account := range accounts {
@@ -68,7 +61,7 @@ func findAccount(vault *account.Vault) {
 	}
 }
 
-func deleteAccount(vault *account.Vault) {
+func deleteAccount(vault *account.VaultWithDb) {
 	url := promptData("Введите url для удаления")
 	if !vault.DeleteAccountsByUrl(url) {
 		color.Green("Аккаунтов с таким url нету")
