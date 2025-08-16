@@ -1,81 +1,38 @@
-package account
+package files
 
 import (
-	"demo/password/files"
-	"encoding/json"
-	"github.com/fatih/color"
-	"strings"
-	"time"
+	"fmt"
+	"os"
 )
 
-type Vault struct {
-	Accounts []Account `json:"accounts"`
-	UpdateAt time.Time `json:"updateAt"`
+type Jsondb struct { //Структура jsondb - нужна для того чтобы указывать
+	filename string // в какую бд(джсон файл в этом примере) мы хотим записать файл
 }
 
-func NewVault() *Vault {
-	file, err := files.ReadFile("data.json")
-	if err != nil {
-		return &Vault{
-			Accounts: []Account{},
-			UpdateAt: time.Now(),
-		}
+func NewJsonDb(name string) *Jsondb { //Создание файла с именем
+	return &Jsondb{ //Возвращение указателя на jsondb c изменённым именем
+		filename: name, //ввод в параметр filename получаемого значения name
 	}
-	var vault Vault
-	err = json.Unmarshal(file, &vault)
-	if err != nil {
-		color.Red(err.Error())
-	}
-	return &vault
-
 }
 
-func (vault *Vault) AddAccount(acc Account) {
-	vault.Accounts = append(vault.Accounts, acc)
-	vault.save()
-}
-
-func (vault *Vault) FindAccountsByUrl(url string) []Account {
-	var accounts []Account
-	for _, account := range vault.Accounts {
-		isMatched := strings.Contains(account.Url, url)
-		if isMatched {
-			accounts = append(accounts, account)
-		}
-
-	}
-	return accounts
-}
-
-func (vault *Vault) DeleteAccountsByUrl(url string) bool {
-	var accounts []Account
-	isDeleted := false
-	for _, account := range vault.Accounts {
-		isMatched := strings.Contains(account.Url, url)
-		if !isMatched {
-			accounts = append(accounts, account)
-			isDeleted = true
-		}
-
-	}
-	vault.Accounts = accounts
-	vault.save()
-
-	return isDeleted
-}
-func (Vault *Vault) ToBytes() ([]byte, error) {
-	file, err := json.Marshal(Vault)
+func (db *Jsondb) Read() ([]byte, error) { // Методы - читаем файл указанный
+	data, err := os.ReadFile(db.filename) //читаем файл с именем filename
 	if err != nil {
 		return nil, err
 	}
-	return file, nil
+	return data, nil //возвращаем информацию полученную при чтении этого файла - тип []byte
 }
 
-func (vault *Vault) save() {
-	vault.UpdateAt = time.Now()
-	data, err := vault.ToBytes()
+func (db *Jsondb) Write(content []byte) { // метод для записи данных в файл - принимает []byte
+	file, err := os.Create(db.filename)
 	if err != nil {
-		color.Red("Не удалось преобразовать данные  в json")
+		fmt.Println(err)
 	}
-	files.WriteFile(data, "data.json")
+	_, err = file.Write(content)
+	defer file.Close()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Успешная запись")
 }
