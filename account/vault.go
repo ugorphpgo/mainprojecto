@@ -9,8 +9,8 @@ import (
 )
 
 type Vault struct {
-	Accounts []Account `json:"accounts"`
-	UpdateAt time.Time `json:"updateAt"`
+	Accounts  []Account `json:"accounts"`
+	UpdatedAt time.Time `json:"updateAt"`
 }
 
 // пример внедрения зависимости Jsond.db
@@ -24,23 +24,27 @@ func NewVault(db *files.Jsondb) *VaultWithDb { //Внедрение зависи
 	if err != nil { //действия не удалось прочитать инфу из файла - его нет//
 		return &VaultWithDb{ //возвращаем и vault и его поля и добавляем к этому поле db
 			Vault: Vault{
-				Accounts: []Account{},
-				UpdateAt: time.Now(),
+				Accounts:  []Account{},
+				UpdatedAt: time.Now(),
 			},
 			db: *db,
 		}
 	}
-	var vault VaultWithDb
-	err = json.Unmarshal(file, &vault)
+	var vault Vault
+	err = json.Unmarshal(file, &vault) //читаем из jsona инфрмацию
 	if err != nil {
-		color.Red(err.Error())
+		color.Red("Не удалось получить информацию из json.db")
+		return &VaultWithDb{
+			Vault: Vault{
+				Accounts:  []Account{},
+				UpdatedAt: time.Now(),
+			},
+			db: *db,
+		}
 	}
 	return &VaultWithDb{
-		Vault: Vault{
-			Accounts: []Account{},
-			UpdateAt: time.Now(),
-		},
-		db: *db,
+		Vault: vault,
+		db:    *db,
 	}
 
 }
@@ -52,9 +56,9 @@ func (vault *VaultWithDb) AddAccount(acc Account) {
 
 func (vault *VaultWithDb) FindAccountsByUrl(url string) []Account {
 	var accounts []Account
-	for _, account := range vault.Accounts {
+	for _, account := range vault.Vault.Accounts {
 		isMatched := strings.Contains(account.Url, url)
-		if isMatched {
+		if isMatched == true {
 			accounts = append(accounts, account)
 		}
 
@@ -87,7 +91,7 @@ func (Vault *Vault) ToBytes() ([]byte, error) { // Запись значение
 }
 
 func (vault *VaultWithDb) save() { //сохранение файла
-	vault.UpdateAt = time.Now()
+	vault.UpdatedAt = time.Now()
 	data, err := vault.Vault.ToBytes()
 	if err != nil {
 		color.Red("Не удалось преобразовать данные  в json")
