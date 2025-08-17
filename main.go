@@ -56,6 +56,9 @@ func createAccount(vault *account.VaultWithDb) { //функция добавле
 func findAccount(vault *account.VaultWithDb) {
 	url := promptData("Введите url для поиска")
 	accounts := vault.FindAccountsByUrl(url)
+	if len(accounts) == 0 {
+		fmt.Println("Аккаунтов не найдено")
+	}
 	for _, account := range accounts {
 		account.Output()
 	}
