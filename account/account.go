@@ -3,7 +3,6 @@ package account
 import (
 	"errors"
 	"fmt"
-	"github.com/fatih/color"
 	"math/rand"
 	"net/url"
 	"time"
@@ -27,9 +26,8 @@ func (acc *Account) generatePassword(lenght int) {
 	}
 	acc.Password = string(gSlice)
 }
-func (acc *Account) OutputPassword() {
+func (acc *Account) Output() {
 	fmt.Println(acc.Login, acc.Password, acc.Url, acc.CreatedAt, acc.UpdatedAt)
-	color.Red(acc.Login)
 }
 
 func NewAccount(login, password, urlString string) (*Account, error) {

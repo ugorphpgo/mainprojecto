@@ -1,12 +1,16 @@
 package account
 
 import (
-	"demo/password/files"
+	"demo/password/output"
 	"encoding/json"
-	"github.com/fatih/color"
 	"strings"
 	"time"
 )
+
+type Db interface { //Создаем интерфейс для работы с файлами - контракт взаимодействия с файлами
+	Read() ([]byte, error)
+	Write([]byte)
+}
 
 type Vault struct {
 	Accounts  []Account `json:"accounts"`
@@ -16,10 +20,10 @@ type Vault struct {
 // пример внедрения зависимости Jsond.db
 type VaultWithDb struct { //Создаем структуру которая учитывает файл в котором будет сохраняться vault
 	Vault
-	db files.Jsondb //Внедренная зависимость от jsonDb
+	db Db //Внедренная зависимость от jsonDb
 }
 
-func NewVault(db *files.Jsondb) *VaultWithDb { //Внедрение зависимости files.JsonDb в vault - передаем указатель на бд
+func NewVault(db Db) *VaultWithDb { //Внедрение зависимости files.JsonDb в vault - передаем указатель на бд
 	file, err := db.Read()
 	if err != nil { //действия не удалось прочитать инфу из файла - его нет//
 		return &VaultWithDb{ //возвращаем и vault и его поля и добавляем к этому поле db
@@ -27,24 +31,24 @@ func NewVault(db *files.Jsondb) *VaultWithDb { //Внедрение зависи
 				Accounts:  []Account{},
 				UpdatedAt: time.Now(),
 			},
-			db: *db,
+			db: db,
 		}
 	}
 	var vault Vault
 	err = json.Unmarshal(file, &vault) //читаем из jsona инфрмацию
 	if err != nil {
-		color.Red("Не удалось получить информацию из json.db")
+		output.PrintError("Не удалось получить информацию из json.db")
 		return &VaultWithDb{
 			Vault: Vault{
 				Accounts:  []Account{},
 				UpdatedAt: time.Now(),
 			},
-			db: *db,
+			db: db,
 		}
 	}
 	return &VaultWithDb{
 		Vault: vault,
-		db:    *db,
+		db:    db,
 	}
 
 }
@@ -54,10 +58,10 @@ func (vault *VaultWithDb) AddAccount(acc Account) {
 	vault.save()
 }
 
-func (vault *VaultWithDb) FindAccountsByUrl(url string) []Account {
+func (vault *VaultWithDb) FindAccounts(str string, checker func(Account, string) bool) []Account {
 	var accounts []Account
 	for _, account := range vault.Vault.Accounts {
-		isMatched := strings.Contains(account.Url, url)
+		isMatched := checker(account, str)
 		if isMatched == true {
 			accounts = append(accounts, account)
 		}
@@ -92,9 +96,9 @@ func (Vault *Vault) ToBytes() ([]byte, error) { // Запись значение
 
 func (vault *VaultWithDb) save() { //сохранение файла
 	vault.UpdatedAt = time.Now()
-	data, err := vault.Vault.ToBytes()
+	data, err := vault.ToBytes()
 	if err != nil {
-		color.Red("Не удалось преобразовать данные  в json")
+		output.PrintError("Не удалось преобразовать данные  в json")
 	}
 	vault.db.Write(data)
 
